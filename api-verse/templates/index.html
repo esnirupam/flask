@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API-Verse - Your Gateway to Open and Public APIs</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header>
+        <h1>API-Verse - Your Gateway to Open and Public APIs</h1>
+        <input type="text" id="main-search" placeholder="Search APIs..." oninput="filterApis()">
+    </header>
+
+    <main>
+        <div class="container">
+            <!-- Left Side: Categories -->
+            <div class="categories">
+                <h2>API Categories</h2>
+                <input type="text" id="category-search" placeholder="Search categories..." oninput="filterCategories()">
+                <ul id="category-list"></ul>
+                <button id="clear-filter" onclick="clearFilter()">Clear Filter</button>
+            </div>
+
+            <!-- Middle Section: API List -->
+            <div class="api-display">
+                <h2>Available APIs</h2>
+                <div id="api-list" class="card-container"></div>
+            </div>
+
+            <!-- Right Side: Contribute API Form -->
+            <div class="contribute-api">
+                <h2>Contribute a New API</h2>
+                <form id="contribute-form">
+                    <label for="apiName">API Name:</label>
+                    <input type="text" id="apiName" name="name" required>
+
+                    <label for="apiURL">API URL:</label>
+                    <input type="url" id="apiURL" name="url" required>
+
+                    <label for="description">API Description:</label>
+                    <textarea id="description" name="description" required></textarea>
+
+                    <label for="apiCategory">API Category:</label>
+                    <input type="text" id="apiCategory" name="category" placeholder="e.g., Weather, Finance" required>
+
+                    <button type="submit">Add API</button>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 API-Verse. All rights reserved.</p>
+    </footer>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+       $(document).ready(function() {
+    fetchCategories(); // Load categories on page load
+    fetchApis(); // Load all APIs initially
+
+    // Fetch and display all APIs
+    function fetchApis(category = "") {
+        const url = category ? `/get_apis_by_category?category=${encodeURIComponent(category)}` : '/get_apis';
+        $.get(url, function(data) {
+            displayApis(data);
+        }).fail(function() {
+            console.error("Error fetching APIs.");
+        });
+    }
+
+    // Handle form submission for adding a new API
+    $('#contribute-form').submit(function(e) {
+        e.preventDefault();
+        const formData = $(this).serializeArray();
+        let apiData = {};
+        formData.forEach(item => apiData[item.name] = item.value);
+
+        $.ajax({
+            url: '/add_api',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(apiData),
+            success: function() {
+                fetchApis(); // Reload APIs
+                fetchCategories(); // Reload categories
+                $('#contribute-form')[0].reset(); // Reset form
+            },
+            error: function() {
+                console.error("Error adding API.");
+            }
+        });
+    });
+
+    // Fetch and display categories
+    function fetchCategories() {
+        $.get('/get_categories', function(data) {
+            let categoryList = '';
+            data.forEach(category => {
+                categoryList += `<li onclick="selectCategory('${category.replace(/'/g, "\\'")}')">${category}</li>`;
+            });
+            $('#category-list').html(categoryList);
+        }).fail(function() {
+            console.error("Error fetching categories.");
+        });
+    }
+
+    // Function to handle category selection
+    window.selectCategory = function(category) {
+        fetchApis(category); // Fetch APIs for the selected category
+    };
+
+    // Function to clear the selected category filter
+    window.clearFilter = function() {
+        fetchApis(); // Fetch all APIs again
+    };
+
+    // Display APIs
+    function displayApis(apis) {
+        let apiList = '';
+        apis.forEach(api => {
+            apiList += `
+                <div class="api-card">
+                    <h3>${api.name}</h3>
+                    <p>${api.description}</p>
+                    <a href="${api.url}" target="_blank">Visit API</a>
+                    <div class="api-category">${api.category}</div>
+                </div>
+            `;
+        });
+        $('#api-list').html(apiList);
+    }
+
+    // Filter displayed APIs based on main search input
+    window.filterApis = function() {
+        const query = $('#main-search').val().toLowerCase();
+        $('.api-card').filter(function() {
+            $(this).toggle($(this).text().toLowerCase().indexOf(query) > -1);
+        });
+    };
+
+    // Filter categories based on search input
+    window.filterCategories = function() {
+        const query = $('#category-search').val().toLowerCase();
+        $('#category-list li').filter(function() {
+            $(this).toggle($(this).text().toLowerCase().indexOf(query) > -1);
+        });
+    };
+});
+
+    </script>
+</body>
+</html>
